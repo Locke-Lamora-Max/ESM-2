@@ -52,6 +52,9 @@ Test set: 1,350 sequences (15% holdout), 225 per EC class. Dataset: 9,000 Swiss-
 
 *ESM-2 + MLP: 480-dim frozen embeddings from `esm2_t12_35M_UR50D`, mean-pooled, then a 2-hidden-layer MLP (256→128) with BatchNorm + Dropout.*
 
+![Model Comparison](results/figures/model_comparison.png)
+Figures: [confusion matrix](results/figures/confusion_matrix.png) · [training curves](results/figures/training_curves.png) · [dataset overview](results/figures/dataset_overview.png)
+
 ## Key Findings
 
 1. Frozen ESM-2 embeddings alone capture enough functional signal for enzyme EC classification — even a linear classifier reaches **79.2% macro F1**
