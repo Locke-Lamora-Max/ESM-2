@@ -116,8 +116,8 @@ For GPU access, upload **`notebooks/exploration_colab.ipynb`** to Google Colab a
 ## References
 
 - Lin et al. "Evolutionary-scale prediction of atomic-level protein structure with a language model." *Science* (2023)
-- UniProt Consortium. "UniProt: the Universal Protein Knowledgebase." *Nucleic Acids Research* (2023)
-- Gao et al. "DEEPre: sequence-based enzyme EC number prediction by deep learning." *Bioinformatics* (2018)
+- The UniProt Consortium. "UniProt: the Universal Protein Knowledgebase." *Nucleic Acids Research* (2023)
+- li et al. "DEEPre: sequence-based enzyme EC number prediction by deep learning." *Bioinformatics* (2018)
 
 ## Author
 
