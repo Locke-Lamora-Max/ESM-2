@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+data/*.csv
+data/*.npy
+data/*.pkl
+# Heavy / regenerable artifacts (keep repo lean)
+esm2_embeddings.npy
+enzymes_swissprot.csv
+labels.npy
+results/*.pt
+results/*.pkl
+# Commit results JSON + figures so reviewers see the outcomes
+!results/experiment_results.json
+!results/figures/
+!results/figures/*.png
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+model_checkpoints/
+wandb/
+*.ckpt
