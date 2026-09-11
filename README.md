@@ -60,7 +60,7 @@ Figures: [confusion matrix](results/figures/confusion_matrix.png) · [training c
 1. Frozen ESM-2 embeddings alone capture enough functional signal for enzyme EC classification — even a linear classifier reaches **79.2% macro F1**
 2. A simple 2-hidden-layer MLP on frozen embeddings reaches **86.9% macro F1**, outperforming classical ML baselines by 4-9 points
 3. The residual confusions are biologically meaningful: EC6 (Ligases) is classified most reliably (F1 0.93), while EC3/EC4 (Hydrolases/Lyases) are hardest to separate
-4. This beats DEEPre's original deep-learning result (~60-70% accuracy at level-1 EC on a similar task) at a fraction of the training cost — no fine-tuning required
+4. A frozen-embedding pipeline is a strong, training-light baseline for main-class EC prediction — natural next step is extending to EC subclasses and benchmarking against hierarchical models like DEEPre on shared benchmarks
 
 ## Project Structure
 
