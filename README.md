@@ -153,11 +153,14 @@ Mohammed Abdul Aziz
 ISL Engineering College, Hyderabad
 Email: mohammedabduljunaid007@gmail.com
 
-**Forked and extended by:** Locke Lamora Max
+**Forked and extended by:** 
+Ahmed Mairaj Baig
+ISL Engineering College, Hyderabad
+ambaig.dev@gmail.com
 - Added hierarchical EC prediction, multi-task EC+GO, and attention pooling
 - Updated the UniProt download pipeline with GO annotations
 
-The base classifier and pipeline are original work by M. Abdul Aziz; this fork extends it with the additional models above.
+The base classifier and pipeline are original work by M. Abdul Aziz and Ahmed Mairaj Baig; this fork extends it with the additional models above.
 
 ## License
 
