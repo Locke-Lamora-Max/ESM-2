@@ -8,6 +8,8 @@ Task: 6-class classification (EC level 1)
   5 - Isomerases
   6 - Ligases
 
+Also downloads Gene Ontology (GO) annotations for multi-task learning.
+
 Filters: reviewed entries only, sequences <= 1022 residues (ESM-2 max length)
 """
 
@@ -32,6 +34,82 @@ MAX_SEQ_LENGTH = 1022  # ESM-2 context limit
 DATA_DIR = Path(__file__).parent
 
 
+def _flatten_go(value):
+    """Recursively yield all string values from a nested dict/list structure.
+
+    Used to extract GO IDs from the UniProt go_p/goP field, which nests
+    annotations in a format that has changed across API versions.
+    """
+    if isinstance(value, dict):
+        for v in value.values():
+            yield from _flatten_go(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _flatten_go(v)
+    elif isinstance(value, str):
+        yield value
+
+
+# Top GO terms used for multi-task auxiliary learning
+# These are the most frequent GO terms across SwissProt enzymes
+TOP_GO_TERMS = [
+    "GO:0005524",   # ATP binding
+    "GO:0003674",   # molecular_function (root)
+    "GO:0005488",   # binding
+    "GO:0003824",   # catalytic activity
+    "GO:0006468",   # protein phosphorylation
+    "GO:0005737",   # cytoplasm
+    "GO:0016020",   # membrane
+    "GO:0005886",   # plasma membrane
+    "GO:0005515",   # protein binding
+    "GO:0008270",   # zinc ion binding
+    "GO:0046872",   # metal ion binding
+    "GO:0005634",   # nucleus
+    "GO:0005829",   # cytosol
+    "GO:0016021",   # integral component of membrane
+    "GO:0005783",   # endoplasmic reticulum
+    "GO:0009986",   # cell surface
+    "GO:0045087",   # innate immune response
+    "GO:0006915",   # apoptotic process
+    "GO:0042981",   # regulation of apoptotic process
+    "GO:0007165",   # signal transduction
+]
+
+
+def _extract_ec(entry):
+    """Extract EC numbers from the current UniProt REST API response.
+
+    EC numbers live under proteinDescription.recommendedName.ecNumbers
+    (and possibly alternativeNames[*].ecNumbers), not the top-level "ec"
+    key used by older API versions.
+    """
+    pd_ = entry.get("proteinDescription", {})
+    ecs = []
+    for section in ("recommendedName", "alternativeNames"):
+        data = pd_.get(section)
+        items = data if isinstance(data, list) else ([data] if isinstance(data, dict) else [])
+        for item in items:
+            for ec in item.get("ecNumbers", []):
+                value = ec.get("value", "")
+                if value:
+                    ecs.append(value)
+    return ecs
+
+
+def _extract_go(entry):
+    """Extract GO IDs from the current UniProt REST API response.
+
+    GO annotations arrive as uniProtKBCrossReferences rows with
+    database == "GO", not as a dedicated "go_p" / "goP" field.
+    """
+    return sorted({
+        xref["id"]
+        for xref in entry.get("uniProtKBCrossReferences", [])
+        if xref.get("database") == "GO"
+        and str(xref.get("id", "")).startswith("GO:")
+    })
+
+
 def query_uniprot(ec_class, max_results=2000):
     """
     Query UniProt REST API for reviewed enzymes of a given EC class.
@@ -43,7 +121,7 @@ def query_uniprot(ec_class, max_results=2000):
     params = {
         "query": query,
         "format": "json",
-        "fields": "accession,sequence,ec,protein_name,organism_name,length",
+        "fields": "accession,sequence,ec,protein_name,organism_name,length,go_p",
         "size": min(max_results, 500),
     }
 
@@ -64,7 +142,9 @@ def query_uniprot(ec_class, max_results=2000):
         for entry in results:
             seq = entry.get("sequence", {}).get("value", "")
             if seq and len(seq) <= MAX_SEQ_LENGTH and len(seq) >= 20:
-                ec_list = entry.get("ec", [])
+                ec_list = _extract_ec(entry)
+                go_ids = _extract_go(entry)
+
                 proteins.append({
                     "accession": entry.get("primaryAccession", ""),
                     "sequence": seq,
@@ -78,6 +158,7 @@ def query_uniprot(ec_class, max_results=2000):
                         .get("recommendedName") else "Unknown",
                     "organism": entry.get("organism", {}).get("scientificName", "Unknown"),
                     "length": len(seq),
+                    "go_terms": ";".join(go_ids[:20]),
                 })
 
         # Check for next page

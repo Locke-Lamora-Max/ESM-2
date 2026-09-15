@@ -4,18 +4,20 @@ Fine-tuning and benchmarking Meta's ESM-2 protein language model for **Enzyme Co
 
 ## Motivation
 
-Accurate enzyme function prediction is critical for drug discovery, metabolic engineering, and understanding disease mechanisms. UniProt contains 245M+ protein sequences, but fewer than 0.1% have experimentally validated functional annotations. This project benchmarks multiple machine learning approaches using ESM-2 protein language model embeddings to predict enzyme function from sequence alone.
+Accurate enzyme function prediction is critical for drug discovery, metabolic engineering, and understanding disease mechanisms. UniProt contains 245M+ protein sequences, but fewer than 0.1% have experimentally validated functional annotations. This project benchmarks multiple machine learning approaches using ESM-2 protein language model embeddings to predict enzyme function from sequence alone, inspired by hierarchical prediction methods such as DEEPre (Li et al., 2018).
 
 ## Approach
 
 ```
-UniProt SwissProt (reviewed enzymes)
+UniProt SwissProt (reviewed enzymes) + GO annotations
         │
         │  Filter: EC level 1, seq ≤ 1022 residues
         ▼
-  Dataset (~8,000-9,000 sequences, 6 classes)
+  Dataset (~8,000-9,000 sequences, 6 EC classes + GO labels)
         │
-        ├──→ ESM-2 Embedding Extraction (frozen, mean-pooled)
+        ├──→ ESM-2 Embedding Extraction (frozen)
+        │     • Mean-pooled (default)
+        │     • Attention-pooled (learned residue weighting)
         │           │
         │           ├── Logistic Regression (baseline)
         │           ├── Random Forest
@@ -23,8 +25,13 @@ UniProt SwissProt (reviewed enzymes)
         │           ├── MLP Classifier
         │           └── Residual MLP
         │
-        └──→ Fine-tuned ESM-2 (classification head)
-                    └── End-to-end training
+        ├──→ Hierarchical EC Classifier (DEEPre-inspired)
+        │     • Level 1: main class (EC 1-6)
+        │     • Level 2: subclass per class
+        │
+        └──→ Multi-task EC + GO Model
+              • Primary: EC classification (6 classes)
+              • Auxiliary: GO term prediction (multi-label)
 ```
 
 ## EC Classes (Task)
@@ -42,6 +49,8 @@ UniProt SwissProt (reviewed enzymes)
 
 Test set: 1,350 sequences (15% holdout), 225 per EC class. Dataset: 9,000 Swiss-Prot enzymes, 1,500 per class.
 
+### Flat Classification
+
 | Model | Accuracy | Macro F1 |
 |-------|----------|----------|
 | Logistic Regression | 0.7919 | 0.7913 |
@@ -49,6 +58,15 @@ Test set: 1,350 sequences (15% holdout), 225 per EC class. Dataset: 9,000 Swiss-
 | Gradient Boosting | 0.8267 | 0.8270 |
 | ESM-2 + MLP | 0.8696 | 0.8694 |
 | ESM-2 + Residual MLP | - | - |
+
+### Hierarchical & Multi-task
+
+| Model | EC Main-Class F1 | EC Subclass | Notes |
+|-------|------------------|-------------|-------|
+| Hierarchical EC | - | - | Level-by-level (DEEPre-inspired) |
+| Multi-task EC+GO | - | GO F1 micro: - | EC + GO auxiliary head |
+
+*Run `python scripts/run_pipeline.py --train` to regenerate with updated models.*
 
 *ESM-2 + MLP: 480-dim frozen embeddings from `esm2_t12_35M_UR50D`, mean-pooled, then a 2-hidden-layer MLP (256→128) with BatchNorm + Dropout.*
 
@@ -67,14 +85,14 @@ Figures: [confusion matrix](results/figures/confusion_matrix.png) · [training c
 ```
 ESM-2/
 ├── data/
-│   ├── download_data.py       # UniProt REST API download
-│   ├── enzymes_swissprot.csv  # Raw dataset
-│   ├── esm2_embeddings.npy    # Pre-extracted embeddings
+│   ├── download_data.py       # UniProt REST API download (incl. GO annotations)
+│   ├── enzymes_swissprot.csv  # Raw dataset with GO terms
+│   ├── esm2_embeddings.npy    # Pre-extracted embeddings (mean-pooled)
 │   └── labels.npy             # Class labels
 ├── src/
-│   ├── embeddings.py          # ESM-2 embedding extraction
-│   ├── models.py              # MLP, Residual MLP, sklearn baselines
-│   ├── train.py               # Training pipeline
+│   ├── embeddings.py          # ESM-2 embedding extraction (mean + attention pooling)
+│   ├── models.py              # MLP, Residual MLP, Hierarchical EC, Multi-task EC+GO, sklearn baselines
+│   ├── train.py               # Training pipeline (flat, hierarchical, multi-task)
 │   └── visualize.py           # Publication-quality figures
 ├── notebooks/
 │   └── exploration_colab.ipynb  # Self-contained Colab notebook
@@ -97,10 +115,13 @@ pip install -r requirements.txt
 python scripts/run_pipeline.py
 
 # Option 2: Run step by step
-python data/download_data.py           # Download data
-python src/embeddings.py              # Extract embeddings (~30 min on GPU)
-python src/train.py                    # Train + evaluate
-python src/visualize.py               # Generate figures
+python data/download_data.py               # Download data (includes GO annotations)
+python src/embeddings.py                    # Extract embeddings (~30 min on GPU)
+python src/train.py                         # Train + evaluate all models
+python src/visualize.py                     # Generate figures
+
+# Attention pooling variant
+python scripts/run_pipeline.py --embeddings --pooling attention
 ```
 
 ## Running on Google Colab (Recommended)
@@ -111,7 +132,14 @@ For GPU access, upload **`notebooks/exploration_colab.ipynb`** to Google Colab a
 
 - **Data download**: CPU only, ~10 minutes
 - **Embedding extraction**: GPU recommended (Colab T4 works), ~30-60 minutes
-- **Training**: CPU or GPU, ~5-10 minutes
+- **Training**: CPU or GPU, ~5-10 minutes (hierarchical + multi-task adds ~5 minutes)
+
+## Future Directions
+
+- [ ] **End-to-end ESM-2 fine-tuning**: Unfreeze ESM-2 layers with low learning rate and train jointly with classification head
+- [ ] **Low-homology evaluation**: Split test set by sequence identity (CD-HIT) to evaluate generalization on orphan/low-homology sequences
+- [ ] **Direct DEEPre benchmark comparison**: Evaluate on DEEPre's published test sets (NEW and DD datasets) for direct comparison
+- [ ] **Attention visualization**: Visualize residue-level attention weights to identify functionally critical positions
 
 ## References
 

@@ -28,12 +28,12 @@ def run_download():
     download_all_enzymes(target_per_class=1500)
 
 
-def run_embeddings():
+def run_embeddings(pooling="mean"):
     print("\n" + "="*60)
-    print("STEP 2: Extracting ESM-2 embeddings")
+    print(f"STEP 2: Extracting ESM-2 embeddings ({pooling} pooling)")
     print("="*60)
     from src.embeddings import extract_and_save
-    extract_and_save()
+    extract_and_save(pooling=pooling)
 
 
 def run_training():
@@ -58,6 +58,8 @@ def main():
     parser.add_argument("--embeddings", action="store_true", help="Extract embeddings only")
     parser.add_argument("--train", action="store_true", help="Train models only")
     parser.add_argument("--evaluate", action="store_true", help="Evaluate and visualize only")
+    parser.add_argument("--pooling", choices=["mean", "attention"], default="mean",
+                        help="Embedding pooling strategy (default: mean)")
     args = parser.parse_args()
 
     any_flag = args.download or args.embeddings or args.train or args.evaluate
@@ -68,7 +70,7 @@ def main():
         run_download()
 
     if not any_flag or args.embeddings:
-        run_embeddings()
+        run_embeddings(args.pooling)
 
     if not any_flag or args.train:
         run_training()
